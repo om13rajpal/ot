@@ -1,101 +1,155 @@
-# DFS
+# BFS
 
 ```
 clc
-clear all
+clear
 
-% Phase 1 input parameter
-c=[6 5 0 0];
-a=[1 1 1 0;
-   3 2 0 1];
-b=[5;12];
-z  = @(x)c*x;
+c = [2 3 0 0];
 
-m=size(a,1); % no of constraints
-n=size(a,2); % no of variables
+A = [1 1 1 0;
+     2 1 0 1];
 
-% Phase 2
-basicsol=[];
-bfsol=[];
-ncm=nchoosek(n,m);
-pair=nchoosek(1:n,m);
+b = [4;5];
 
-for i = 1:ncm
-    basic_index=pair(i,:);
+z = @(x) c*x;
+
+[m,n] = size(A);
+
+basicSol = [];
+bfSol = [];
+degSol = [];
+
+pair = nchoosek(1:n,m);
+
+for i=1:size(pair,1)
+
     y=zeros(n,1);
-    x=a(:,basic_index)\b;
-    y(basic_index)=x;
-    basicsol=[basicsol y];
-    if(x>=0)
-        bfsol = [bfsol y];
+    bv_index=pair(i,:);
+    B=A(:,bv_index);
+
+    if rank(B)<m
+        continue
+    end
+
+    X=B\b;
+    y(bv_index)=X;
+
+    basicSol=[basicSol y];
+
+    if all(X>=0)
+        bfSol=[bfSol y];
+
+        if any(X==0)
+            degSol=[degSol y];
+        end
     end
 end
 
-disp(basicsol)
-disp(bfsol)
+disp('Basic Solutions:')
+disp(basicSol)
 
-% Phase 3 optimal solution and optimal value
-cost= z(bfsol);
-[optimal index]=max(cost);
-optsol=bfsol(:,index);
+disp('Basic Feasible Solutions:')
+disp(bfSol)
+
+disp('Degenerate BFS:')
+disp(degSol)
+
+cost=z(bfSol);
+disp(cost)
+
+[opt_val,index]=max(cost);
+opt_sol=bfSol(:,index);
+
+disp('Optimal Solution:')
+disp(opt_sol)
+
+disp('Optimal Value:')
+disp(opt_val)
 ```
 
 # GRAPH
 
 ```
-clc
-clear all
-%Phase 1 input 
-c=[3,-5];
-a=[1 1;2 -1];
-b=[6;9];
-z=@(x1,x2)3*x1-5*x2;
-c1=@(x1,x2)x1+x2-6;
-c2=@(x1,x2)2*x1-x2-9;
-m=size(a,1);
-n=size(a,2);
-%phase 2 plotting
-x1=0:max(b./a(:,1))
-for i=1:m
-    x2=(b(i)-a(i,1)*x1)/a(i,2)
-    plot(x1,x2)
-    hold on;
-end
-%phase 3 intersection and find corner points
-a=[a;eye(2)];
-b=[b;zeros(2,1)];
-m=size(a,1);
-pt=[];
+clc;
+clear;
+close all;
 
-for i=1:m
-    for j=i+1:m
-        aa=[a(i,:);a(j,:)];
-        bb=[b(i);b(j)];
-        if(det(aa)~=0)
-            x=inv(aa)*bb
-            if(x>=0)
-             pt=[pt x]
+% Phase 1 - Input
+c = [3 -5];
+A = [1 1; 2 -1];
+b = [6; 9];
+
+z  = @(x1,x2) 3*x1 - 5*x2;
+c1 = @(x1,x2) x1 + x2 - 6;
+c2 = @(x1,x2) 2*x1 - x2 - 9;
+
+[m, n] = size(A);
+
+% Phase 2 - Plot Constraints
+x1 = 0:0.1:10;
+
+figure;
+for i = 1:m
+    if A(i,2) ~= 0
+        x2 = (b(i) - A(i,1)*x1) / A(i,2);
+        plot(x1,x2,'LineWidth',2);
+        hold on;
+    end
+end
+
+xlabel('x1');
+ylabel('x2');
+grid on;
+
+% Phase 3 - Intersection and Corner Points
+pt = [];
+A1 = [A; -eye(2)];
+b1 = [b; 0; 0];
+m1 = size(A1,1);
+
+for i = 1:m1
+    for j = i+1:m1
+        aa = [A1(i,:); A1(j,:)];
+        bb = [b1(i); b1(j)];
+        if det(aa) ~= 0
+            X = aa\bb;
+            if all(X >= 0)
+                pt = [pt X];
             end
         end
     end
 end
-% Phase 4 
-FP=[];
-Z=[];
-for i=1:size(pt,2)
-    pt1=pt(1,i);
-    pt2=pt(2,i);
-    if(c1(pt1,pt2)<=0&&c2(pt1,pt2)<=0)
-        FP=[FP,pt(:,i)];
-        plot(pt1,pt2,'*r','MarkerSize',10);
-        cost=z(pt1,pt2);
-        Z=[Z cost];
+
+disp('Corner Points:');
+disp(pt);
+
+% Phase 4 - Feasible Points
+FP = [];
+Z  = [];
+
+for i = 1:size(pt,2)
+    PT1 = pt(1,i);
+    PT2 = pt(2,i);
+    if c1(PT1,PT2) <= 0 && c2(PT1,PT2) <= 0
+        FP = [FP pt(:,i)];
+        plot(PT1,PT2,'*r','MarkerSize',10)
+        Z = [Z z(PT1,PT2)];
     end
 end
+
+disp('Feasible Points:');
 disp(FP)
+disp('Objective Values:');
 disp(Z)
-hold off
-%Phase 5
-[optimal_value index]=min(Z)
-optimal_sol=FP(:,index)
+
+% Phase 5 - Optimal Solution (Minimization)
+[optimal_value, index] = min(Z);
+optimal_sol = FP(:,index);
+
+disp('Optimal Solution (x1, x2):');
+disp(optimal_sol)
+disp('Optimal Value:');
+disp(optimal_value)
+
+hold off;
 ```
